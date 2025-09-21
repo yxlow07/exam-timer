@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Timetable</title>
+    <link rel="stylesheet" href="../output.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple animation for cards appearing */
+        .card-enter {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Exam Timetable</h1>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Next Exam Countdown Section -->
+            <div id="next-exam-container" class="mb-10">
+                <!-- Content will be injected by JavaScript -->
+            </div>
+
+            <!-- Filter Section -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-slate-800 mb-3">Filter by Subject</h3>
+                <div id="filter-container" class="flex flex-wrap gap-3">
+                    <!-- Filter buttons will be injected by JavaScript -->
+                </div>
+            </div>
+
+            <!-- All Upcoming Exams Section -->
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900 border-b-2 border-slate-200 pb-3 mb-6">Scheduled Exams</h2>
+                <div id="timetable-container" class="space-y-6">
+                    <!-- Exam cards will be injected by JavaScript -->
+                    <div id="no-exams-message" class="hidden text-center py-10 px-6 bg-white rounded-lg shadow-sm">
+                        <p class="text-slate-500">No upcoming exams found!</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Raw exam data from the user input
+            const rawExamData = [
+                "MTH 13 | 10/8/2025, 8:30:00 AM → 10/8/2025, 10:30:00 AM",
+                "FMT 12 | 10/8/2025, 12:30:00 PM → 10/8/2025, 2:30:00 PM",
+                "CHM 23 | 10/10/2025, 8:30:00 AM → 10/10/2025, 9:45:00 AM",
+                "FMT 32 | 10/10/2025, 12:30:00 PM → 10/10/2025, 2:00:00 PM",
+                "PHY 23 | 10/15/2025, 8:30:00 AM → 10/15/2025, 9:45:00 AM",
+                "MTH 53 | 10/16/2025, 8:30:00 AM → 10/16/2025, 9:45:00 AM",
+                "PHY 36 | 10/23/2025, 8:30:00 AM → 10/23/2025, 10:30:00 AM",
+                "CHM 36 | 10/28/2025, 8:30:00 AM → 10/28/2025, 1:30:00 PM",
+                "PHY 13 | 11/11/2025, 8:30:00 AM → 11/11/2025, 9:45:00 AM",
+                "CHM 13 | 11/13/2025, 8:30:00 AM → 11/13/2025, 9:45:00 AM"
+            ];
+
+            const getCourseFullName = (courseCode) => {
+                const parts = courseCode.split(' ');
+                if (parts.length < 2) return courseCode; // Fallback for unexpected formats
+
+                const subjectCode = parts[0].toUpperCase();
+                const paperNumber = parts[1].charAt(0);
+
+                let subjectName = '';
+                switch (subjectCode) {
+                    case 'MTH': subjectName = 'Mathematics'; break;
+                    case 'FMT': subjectName = 'Further Mathematics'; break;
+                    case 'CHM': subjectName = 'Chemistry'; break;
+                    case 'PHY': subjectName = 'Physics'; break;
+                    default: subjectName = subjectCode; break;
+                }
+                return `${subjectName} Paper ${paperNumber}`;
+            };
+
+            // --- DATA PROCESSING ---
+            const exams = rawExamData.map(entry => {
+                const [course, times] = entry.split(' | ');
+                const [startStr, endStr] = times.split(' → ');
+                const courseTrimmed = course.trim();
+                return {
+                    course: courseTrimmed,
+                    fullName: getCourseFullName(courseTrimmed),
+                    start: new Date(startStr.trim()),
+                    end: new Date(endStr.trim())
+                };
+            }).sort((a, b) => a.start - b.start);
+
+            // Mock current date for consistent demonstration
+            const now = new Date('2025-09-21T09:46:00'); 
+            // const now = new Date(); // Use this for real-time data
+            
+            const upcomingExams = exams.filter(exam => exam.start > now);
+            
+            const timetableContainer = document.getElementById('timetable-container');
+            const nextExamContainer = document.getElementById('next-exam-container');
+            const noExamsMessage = document.getElementById('no-exams-message');
+            const filterContainer = document.getElementById('filter-container');
+
+            // --- UTILITY FUNCTIONS ---
+            const getCourseStyle = (courseCode) => {
+                const subject = courseCode.substring(0, 3).toUpperCase();
+                switch (subject) {
+                    case 'MTH': return { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' };
+                    case 'FMT': return { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' };
+                    case 'CHM': return { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200' };
+                    case 'PHY': return { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200' };
+                    default: return { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' };
+                }
+            };
+            
+            const formatDate = (date) => new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+            const formatTime = (date) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(date);
+            
+            const getDuration = (start, end) => {
+                const diffMs = end - start;
+                const hours = Math.floor(diffMs / 3600000);
+                const minutes = Math.floor((diffMs % 3600000) / 60000);
+                let durationStr = '';
+                if (hours > 0) durationStr += `${hours} hour${hours > 1 ? 's' : ''} `;
+                if (minutes > 0) durationStr += `${minutes} minute${minutes > 1 ? 's' : ''}`;
+                return durationStr.trim();
+            };
+
+            // --- RENDERING LOGIC ---
+            const renderTimetable = (examsToRender) => {
+                timetableContainer.innerHTML = ''; // Clear previous list
+
+                if (examsToRender.length === 0) {
+                    const message = upcomingExams.length === 0 
+                        ? 'No upcoming exams found!' 
+                        : 'No exams match the selected filter.';
+                    
+                    timetableContainer.innerHTML = `
+                        <div class="text-center py-10 px-6 bg-white rounded-lg shadow-sm">
+                            <p class="text-slate-500">${message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let lastDate = null;
+                examsToRender.forEach((exam, index) => {
+                    const examDate = exam.start.toDateString();
+                    if (examDate !== lastDate) {
+                        const dateHeader = document.createElement('h3');
+                        dateHeader.className = 'text-lg font-semibold text-slate-600 sticky top-0 bg-slate-50/80 py-2 backdrop-blur-sm';
+                        dateHeader.textContent = formatDate(exam.start);
+                        timetableContainer.appendChild(dateHeader);
+                        lastDate = examDate;
+                    }
+                    
+                    const style = getCourseStyle(exam.course);
+                    const card = document.createElement('div');
+                    card.className = `card-enter bg-white p-4 rounded-lg shadow-sm border-l-4 ${style.border} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`;
+                    card.style.animationDelay = `${index * 50}ms`;
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <span class="font-bold py-1 px-3 rounded-full ${style.bg} ${style.text}">${exam.course}</span>
+                            <div>
+                                <p class="font-semibold text-slate-800">${exam.fullName}</p>
+                                <p class="text-sm text-slate-500 mt-1">${formatTime(exam.start)} - ${formatTime(exam.end)}</p>
+                                <p class="text-xs text-slate-400">${getDuration(exam.start, exam.end)}</p>
+                            </div>
+                        </div>
+                        <div class="hidden sm:block text-right">
+                             <!-- Placeholder for future actions -->
+                        </div>
+                    `;
+                    timetableContainer.appendChild(card);
+                });
+            };
+
+            const renderFilters = () => {
+                const subjects = ['All', ...new Set(exams.map(exam => exam.course.substring(0, 3).toUpperCase()))];
+                
+                subjects.forEach(subject => {
+                    const button = document.createElement('button');
+                    button.className = 'px-4 py-2 text-sm font-medium rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500';
+                    
+                    if (subject === 'All') {
+                        button.classList.add('bg-slate-800', 'text-white');
+                    } else {
+                        button.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-100', 'border', 'border-slate-300');
+                    }
+                    
+                    button.textContent = subject;
+                    button.dataset.subject = subject;
+                    filterContainer.appendChild(button);
+                });
+            };
+            
+            const startCountdown = (nextExam) => {
+                if (!nextExam) {
+                     nextExamContainer.innerHTML = `
+                        <div class="text-center p-6 bg-green-100 border border-green-200 rounded-lg">
+                            <h2 class="text-2xl font-bold text-green-800">All Done!</h2>
+                            <p class="text-green-700 mt-1">You have no more upcoming exams. Well done!</p>
+                        </div>`;
+                    return;
+                }
+
+                const style = getCourseStyle(nextExam.course);
+                nextExamContainer.innerHTML = `
+                    <h2 class="text-2xl font-bold text-slate-900 text-center mb-4">Next Exam In</h2>
+                    <div id="countdown-card" class="bg-white p-6 rounded-xl shadow-lg transition-all duration-300">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+                            <div>
+                                <span class="font-bold text-lg py-1.5 px-4 rounded-full ${style.bg} ${style.text}">${nextExam.course}</span>
+                                <h3 class="text-xl font-bold text-slate-800 mt-3">${nextExam.fullName}</h3>
+                                <p class="text-slate-500 mt-1">${formatDate(nextExam.start)} at ${formatTime(nextExam.start)}</p>
+                            </div>
+                        </div>
+                        <div id="timer" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center"></div>
+                    </div>
+                `;
+                
+                const timerElement = document.getElementById('timer');
+                
+                const updateTimer = () => {
+                    const nowForTimer = new Date(); // Use real current time for countdown
+                    const distance = nextExam.start - nowForTimer;
+
+                    if (distance < 0) {
+                        timerElement.innerHTML = `<div class="col-span-full text-lg font-semibold text-blue-600">This exam is currently in progress!</div>`;
+                        clearInterval(interval);
+                        return;
+                    }
+
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    timerElement.innerHTML = `
+                        <div class="bg-slate-100 p-3 rounded-lg">
+                            <div class="text-3xl font-bold text-slate-900">${String(days).padStart(2, '0')}</div>
+                            <div class="text-xs text-slate-500 uppercase tracking-wider">Days</div>
+                        </div>
+                        <div class="bg-slate-100 p-3 rounded-lg">
+                            <div class="text-3xl font-bold text-slate-900">${String(hours).padStart(2, '0')}</div>
+                            <div class="text-xs text-slate-500 uppercase tracking-wider">Hours</div>
+                        </div>
+                        <div class="bg-slate-100 p-3 rounded-lg">
+                            <div class="text-3xl font-bold text-slate-900">${String(minutes).padStart(2, '0')}</div>
+                            <div class="text-xs text-slate-500 uppercase tracking-wider">Minutes</div>
+                        </div>
+                        <div class="bg-slate-100 p-3 rounded-lg">
+                            <div class="text-3xl font-bold text-slate-900">${String(seconds).padStart(2, '0')}</div>
+                            <div class="text-xs text-slate-500 uppercase tracking-wider">Seconds</div>
+                        </div>
+                    `;
+                };
+
+                updateTimer();
+                const interval = setInterval(updateTimer, 1000);
+            };
+
+            // --- EVENT LISTENERS ---
+            filterContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    // Update active button style
+                    document.querySelectorAll('#filter-container button').forEach(btn => {
+                        btn.classList.remove('bg-slate-800', 'text-white');
+                        btn.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-100', 'border', 'border-slate-300');
+                    });
+                    e.target.classList.add('bg-slate-800', 'text-white');
+                    e.target.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-100', 'border', 'border-slate-300');
+
+                    const selectedSubject = e.target.dataset.subject;
+                    
+                    const filteredExams = selectedSubject === 'All'
+                        ? upcomingExams
+                        : upcomingExams.filter(exam => exam.course.startsWith(selectedSubject));
+
+                    renderTimetable(filteredExams);
+                }
+            });
+
+
+            // --- INITIALIZE APP ---
+            renderFilters();
+            renderTimetable(upcomingExams);
+            startCountdown(upcomingExams[0]);
+        });
+    </script>
+
+</body>
+</html>
